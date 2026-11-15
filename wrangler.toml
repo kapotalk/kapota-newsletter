@@ -4,8 +4,10 @@ compatibility_date = "2026-09-09"
 
 # 11:00 UTC = 08:00 horário de Brasília. Brasil não observa horário de
 # verão desde 2019 (Decreto 9.772), então esse offset é estável o ano todo.
+# Dia da semana por nome: no cron da Cloudflare o "1" é domingo, e com ele o
+# resumo saiu aos domingos de 13/09 a 15/11/2026, sempre com a semana retrasada.
 [triggers]
-crons = ["0 11 * * 1"]
+crons = ["0 11 * * MON"]
 
 [vars]
 WORKER_URL = "https://kapota-newsletter.sigakapota.workers.dev"
