@@ -115,3 +115,21 @@ export async function recordAttempt(db, ip, now) {
     .bind(ip, now)
     .run();
 }
+
+export async function insertContact(db, { nome, email, assunto, mensagem }, now) {
+  await db
+    .prepare(
+      `INSERT INTO contacts (nome, email, assunto, mensagem, status, created_at)
+       VALUES (?, ?, ?, ?, 'nova', ?)`
+    )
+    .bind(nome, email, assunto, mensagem, now)
+    .run();
+}
+
+export async function listContacts(db, limit = 100) {
+  const { results } = await db
+    .prepare("SELECT * FROM contacts ORDER BY created_at DESC, id DESC LIMIT ?")
+    .bind(limit)
+    .all();
+  return results;
+}

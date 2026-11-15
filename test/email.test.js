@@ -7,7 +7,7 @@ const POST_A = {
   title: "Post de teste",
   url: "https://kapota.com.br/blog/post-de-teste/",
   excerpt: "Um resumo.",
-  category: "Frase Comentada",
+  category: "Pensa Nisso",
 };
 
 beforeEach(() => {
@@ -33,7 +33,7 @@ describe("email", () => {
   it("sendWeeklyDigest inclui um card por post, com link e descadastro", async () => {
     await sendWeeklyDigest(env, "b@example.com", "https://worker.example/unsubscribe?token=u1", [POST_A], "08 a 14 de setembro");
     const body = JSON.parse(fetch.mock.calls[0][1].body);
-    expect(body.subject).toContain("1 post novo");
+    expect(body.subject).toBe("Resumo da semana: 1 artigo novo");
     expect(body.html).toContain("Post de teste");
     expect(body.html).toContain("https://kapota.com.br/blog/post-de-teste/");
     expect(body.html).toContain("https://worker.example/unsubscribe?token=u1");
@@ -44,9 +44,44 @@ describe("email", () => {
     const postB = { ...POST_A, title: "Segundo post", url: "https://kapota.com.br/blog/segundo/" };
     await sendWeeklyDigest(env, "b@example.com", "https://worker.example/unsubscribe?token=u1", [POST_A, postB], "08 a 14 de setembro");
     const body = JSON.parse(fetch.mock.calls[0][1].body);
-    expect(body.subject).toContain("2 posts novos");
+    expect(body.subject).toBe("Resumo da semana: 2 artigos novos");
     expect(body.html).toContain("Post de teste");
     expect(body.html).toContain("Segundo post");
+  });
+
+  it("sendConfirmationEmail usa o assunto novo", async () => {
+    await sendConfirmationEmail(env, "a@example.com", "https://worker.example/confirm?token=xyz");
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(body.subject).toBe("Confirma sua inscrição na Leitura de Mercado");
+  });
+
+  it("renomeia séries antigas, preservando o sufixo #N", async () => {
+    const mk = (category) => ({ ...POST_A, title: "Titulo", category });
+    const posts = [
+      mk("Radar de Notícias #12"),
+      mk("Leitura Estratégica"),
+      mk("Radar da Semana #3"),
+      mk("Modelo Mental"),
+      mk("Frase Comentada #8"),
+      mk("Bastidores"),
+    ];
+    await sendWeeklyDigest(env, "b@example.com", "https://worker.example/unsubscribe?token=u1", posts, "08 a 14 de novembro");
+    const { html } = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(html).toContain("Se Atualize #12");
+    expect(html).toContain("Resumo da Semana #3");
+    expect(html).toContain("Nota Mental");
+    expect(html).toContain("Pensa Nisso #8");
+    expect(html).toContain("Bastidores");
+    expect(html).not.toMatch(/Radar de Notícias|Leitura Estratégica|Radar da Semana|Modelo Mental|Frase Comentada/);
+  });
+
+  it("nenhum email contém travessão", async () => {
+    await sendWeeklyDigest(env, "b@example.com", "https://worker.example/unsubscribe?token=u1", [POST_A], "08 a 14 de novembro");
+    await sendConfirmationEmail(env, "a@example.com", "https://worker.example/confirm?token=xyz");
+    for (const [, init] of fetch.mock.calls) {
+      const { subject, html } = JSON.parse(init.body);
+      expect(subject + html).not.toMatch(/[—–]/);
+    }
   });
 
   it("lança erro se o Resend responder com falha", async () => {

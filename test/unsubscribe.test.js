@@ -13,6 +13,7 @@ describe("GET /unsubscribe", () => {
     await confirmByToken(env.DB, "tok-y", "2026-09-09T00:00:00.000Z");
     const res = await SELF.fetch("https://worker.example/unsubscribe?token=unsub-y");
     expect(res.status).toBe(200);
+    expect(await res.text()).toContain("Pronto, você saiu.");
     const row = await getSubscriberByEmail(env.DB, "y@example.com");
     expect(row.status).toBe("unsubscribed");
   });
@@ -20,5 +21,6 @@ describe("GET /unsubscribe", () => {
   it("responde 400 pra token inválido", async () => {
     const res = await SELF.fetch("https://worker.example/unsubscribe?token=nao-existe");
     expect(res.status).toBe(400);
+    expect(await res.text()).toContain("Link inválido.");
   });
 });
