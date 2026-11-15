@@ -6,6 +6,7 @@ import { handleRegisterPost } from "./handlers/registerPost.js";
 import { sendPendingDigest } from "./digest.js";
 import { WorkerEntrypoint } from "cloudflare:workers";
 import { sendAccessCode } from "./email.js";
+import { cadastrar, acesso, evento, visita, ErroCadastro } from "./materiais.js";
 
 // Chamado pelo servidor dos painéis (painel.kapota.com.br) por service binding.
 // Não tem rota pública: só quem tem o binding consegue chamar.
@@ -16,6 +17,32 @@ export class Correio extends WorkerEntrypoint {
     }
     await sendAccessCode(this.env, email, String(codigo), typeof nome === "string" ? nome.slice(0, 80) : "");
     return { ok: true };
+  }
+}
+
+// Chamado pelo Worker kapota-conteudos (conteudos.kapota.com.br) por service binding:
+// cadastro pra liberar os materiais, aparelho liberado, quem abriu/chegou ao fim e visitas.
+// Erros de validação voltam como { erro, status } (não lançam), pro conteudos repassar.
+export class Materiais extends WorkerEntrypoint {
+  async cadastrar(dados, contexto = {}) {
+    try {
+      return await cadastrar(this.env, dados, {
+        ip: typeof contexto.ip === "string" ? contexto.ip : "unknown",
+        segundos: typeof contexto.segundos === "number" ? contexto.segundos : null,
+      });
+    } catch (e) {
+      if (e instanceof ErroCadastro) return { erro: e.message, status: e.status };
+      throw e;
+    }
+  }
+  async acesso(token) {
+    return acesso(this.env, token);
+  }
+  async evento(token, dados) {
+    return evento(this.env, token, dados);
+  }
+  async visita(material, titulo) {
+    return visita(this.env, material, titulo);
   }
 }
 
