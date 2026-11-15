@@ -4,6 +4,20 @@ import { handleUnsubscribe } from "./handlers/unsubscribe.js";
 import { handleContact } from "./handlers/contact.js";
 import { handleRegisterPost } from "./handlers/registerPost.js";
 import { sendPendingDigest } from "./digest.js";
+import { WorkerEntrypoint } from "cloudflare:workers";
+import { sendAccessCode } from "./email.js";
+
+// Chamado pelo servidor dos painéis (painel.kapota.com.br) por service binding.
+// Não tem rota pública: só quem tem o binding consegue chamar.
+export class Correio extends WorkerEntrypoint {
+  async codigoDeAcesso(email, codigo, nome) {
+    if (typeof email !== "string" || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^\d{6}$/.test(String(codigo))) {
+      throw new Error("Pedido de código inválido");
+    }
+    await sendAccessCode(this.env, email, String(codigo), typeof nome === "string" ? nome.slice(0, 80) : "");
+    return { ok: true };
+  }
+}
 
 export default {
   async fetch(request, env) {

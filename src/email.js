@@ -1,15 +1,15 @@
-import { resumo, confirmacao } from "./templates.js";
+import { resumo, confirmacao, acessoPainel } from "./templates.js";
 
 const FROM = "Klysman Kley <novidades@kapota.com.br>";
 
-async function sendEmail(env, { to, subject, html }) {
+async function sendEmail(env, { to, subject, html, from = FROM }) {
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from: FROM, to, subject, html }),
+    body: JSON.stringify({ from, to, subject, html }),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -43,4 +43,10 @@ export async function sendWeeklyDigest(env, email, unsubscribeUrl, posts, weekLa
   const mapped = posts.map((p) => ({ ...p, category: renameCategory(p.category) }));
   const { assunto, html } = resumo({ posts: mapped, periodo: weekLabel, descadastrar: unsubscribeUrl });
   return sendEmail(env, { to: email, subject: assunto, html });
+}
+
+// Código de login dos painéis; pedido pelo servidor dos painéis via service binding (ver Correio em index.js).
+export async function sendAccessCode(env, email, codigo, nome) {
+  const { assunto, html } = acessoPainel({ codigo, nome });
+  return sendEmail(env, { to: email, subject: assunto, html, from: "Painéis Kapota <acesso@kapota.com.br>" });
 }

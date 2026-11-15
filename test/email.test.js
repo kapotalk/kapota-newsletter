@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { sendConfirmationEmail, sendWeeklyDigest } from "../src/email.js";
+import { sendAccessCode, sendConfirmationEmail, sendWeeklyDigest } from "../src/email.js";
 
 const env = { RESEND_API_KEY: "re_test_key" };
 
@@ -123,5 +123,15 @@ describe("email", () => {
     const body = JSON.parse(fetch.mock.calls[0][1].body);
     expect(body.html).not.toContain('x" onmouseover="alert(1)');
     expect(body.html).toContain("x&quot; onmouseover=&quot;alert(1)");
+  });
+
+  it("sendAccessCode manda o código dos painéis, com o remetente de acesso", async () => {
+    await sendAccessCode(env, "e@example.com", "123456", "Ana <b>");
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(body.from).toBe("Painéis Kapota <acesso@kapota.com.br>");
+    expect(body.subject).toBe("123 456 é seu código pros painéis");
+    expect(body.html).toContain("123 456");
+    expect(body.html).toContain("Ana &lt;b&gt;");
+    expect(body.html).not.toMatch(/[\u2013\u2014]/);
   });
 });

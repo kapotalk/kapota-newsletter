@@ -189,3 +189,22 @@ export function confirmacao({ confirmar }) {
   return { assunto, previa, html: documento({ titulo: assunto, previa, corpo }) };
 }
 
+
+/* ---------- Código de acesso aos painéis (painel.kapota.com.br) ---------- */
+export function acessoPainel({ codigo, nome }) {
+  const formatado = `${codigo.slice(0, 3)} ${codigo.slice(3)}`;
+  const assunto = `${formatado} é seu código pros painéis`;
+  const corpo = `
+    ${capa({
+      rotulo: "Painéis",
+      sobrelinha: "Código de acesso",
+      titulo: `<span style="font-family:${MONO};letter-spacing:0.06em;color:${C.brasa};">${esc(formatado)}</span>`,
+      texto: `${nome ? `Oi, ${esc(nome)}. ` : ""}Use esse código pra entrar em painel.kapota.com.br. Ele vale por 10 minutos.`
+    })}
+    ${rodape({
+      texto: "Se não foi você que pediu, é só ignorar este email. Ninguém entra sem o código.",
+      links: linkRodape("https://painel.kapota.com.br/", "painel.kapota.com.br")
+    })}`;
+  const previa = "Vale por 10 minutos.";
+  return { assunto, previa, html: documento({ titulo: assunto, previa, corpo }) };
+}
