@@ -1,0 +1,53 @@
+# Publica o Worker kapota-newsletter a cada push na main: roda os testes, aplica as migrations novas
+# do D1 (as já aplicadas ficam marcadas em d1_migrations) e publica. Teste quebrado não publica.
+# Sem o CLOUDFLARE_API_TOKEN, ou rodando à mão com "ensaio", testa e valida sem enviar nada.
+name: Publicar a newsletter
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      ensaio:
+        description: "Só ensaio (não publica)"
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: publicar-newsletter
+  cancel-in-progress: false
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Testes
+        run: npm test
+      - name: Decidir se publica ou só ensaia
+        id: modo
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::warning::Falta o segredo CLOUDFLARE_API_TOKEN (ou CLOUDFLARE_ACCOUNT_ID). Só ensaio, nada foi publicado."
+            echo "publica=nao" >> "$GITHUB_OUTPUT"
+          elif [ "${{ inputs.ensaio }}" = "true" ]; then
+            echo "publica=nao" >> "$GITHUB_OUTPUT"
+          else
+            echo "publica=sim" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Ensaio (valida, sem enviar)
+        if: steps.modo.outputs.publica == 'nao'
+        run: npx -y wrangler@4 deploy --dry-run --outdir /tmp/ensaio-newsletter
+      - name: Migrations novas do D1
+        if: steps.modo.outputs.publica == 'sim'
+        run: npx -y wrangler@4 d1 migrations apply kapota_newsletter --remote
+      - name: Publicar
+        if: steps.modo.outputs.publica == 'sim'
+        run: npx -y wrangler@4 deploy
